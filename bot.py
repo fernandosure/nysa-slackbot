@@ -62,7 +62,7 @@ def handle_command(slack_client, authorized_channel_id, command, channel):
     parameters = {
         "channel": channel,
         "text": "Not sure what you mean. Try *{}*" \
-                .format("@nysa deploy to <cluster> <service>:<tag>[,<service>:<tag>] or @nysa deploy all:<tag>")
+                .format("@nysa deploy to <cluster> <service>:<tag>[,<service>:<tag>] or @nysa deploy to <cluster> all:<tag>")
     }
 
     if channel != authorized_channel_id:
