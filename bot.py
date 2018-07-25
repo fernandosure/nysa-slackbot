@@ -10,22 +10,14 @@ from secret_manager import get_secret
 import logging
 logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
 
-
-# instantiate Slack client
-slack_client = SlackClient(get_secret('SLACK_BOT_TOKEN'))
-authorized_channel = get_secret('SLACK_BOT_AUTHORIZED_CHANNEL')
-authorized_channel_id = ""
-
-# starterbot's user ID in Slack: value is assigned after the bot starts up
-starterbot_id = None
-
 # constants
 RTM_READ_DELAY = 1  # 1 second delay between reading from RTM
 MENTION_REGEX = "^<@(|[WU].+?)>(.*)"
-COMMAND_REGEX = "^(?P<cmd>\w+)\s?(to)?\s?(?P<cluster>\w+)?\s?(?P<service>[a-zA-Z0-9\/\-]+)?\:?(?P<tag>[a-zA-Z0-9\-]+)?$"
+COMMAND_REGEX = "^(?P<cmd>\w+)\s(to)\s(?P<cluster>\w+)\s(?P<services>(([a-zA-Z0-9\/\-]+)(\:([a-zA-Z0-9\-]+))?)?(\,([a-zA-Z0-9\/\-]+)(\:([a-zA-Z0-9\-]+)){1})*)$"
+SERVICES_REGEX = "(?P<service>[a-zA-Z0-9\/\-]+)(\:(?P<tag>[a-zA-Z0-9\-]+))?"
 
 
-def parse_bot_commands(slack_events):
+def parse_bot_commands(starterbot_id, slack_events):
     """
         Parses a list of events coming from the Slack RTM API to find bot commands.
         If a bot command is found, this function returns a tuple of command and channel.
@@ -50,19 +42,27 @@ def parse_direct_mention(message_text):
 
 
 def parse_command(message_text):
-    matches = re.search(COMMAND_REGEX, message_text)
+    m = re.search(COMMAND_REGEX, message_text)
     # the first group contains the username, the second group contains the remaining message
-    return (matches.group("cmd"), matches.group("cluster"), matches.group("service"), matches.group("tag")) if matches else (None, None, None, None)
+    if not m:
+        raise ValueError
+
+    services = []
+    for svc in re.finditer(SERVICES_REGEX, m.group("services")):
+        services.append({"service": svc.group("service"), "tag": svc.group("tag")})
+
+    return (m.group("cmd"), m.group("cluster"), services) if m else (None, None, None)
 
 
-def handle_command(command, channel):
+def handle_command(slack_client, authorized_channel_id, command, channel):
     """
         Executes bot command if the command is known
     """
 
     parameters = {
         "channel": channel,
-        "text": "Not sure what you mean. Try *{}*".format("@nysa deploy <cluster> <service>:<tag>")
+        "text": "Not sure what you mean. Try *{}*" \
+                .format("@nysa deploy to <cluster> <service>:<tag>[,<service>:<tag>] or @nysa deploy all:<tag>")
     }
 
     if channel != authorized_channel_id:
@@ -70,7 +70,10 @@ def handle_command(command, channel):
     else:
         try:
             parameters.update(handle_ecs_bot_cmd(*parse_command(command)))
-        except Exception as e:
+        except ValueError:
+            pass
+        except Exception as ex:
+            logging.error(ex)
             rollbar.report_exc_info(sys.exc_info())
             parameters["text"] = "Oops, there was an error with the deploy, try it again!!"
 
@@ -82,6 +85,8 @@ if __name__ == "__main__":
 
     logging.info("Starting Slackbot")
     rollbar.init(get_secret('ROLLBAR_KEY'))
+    authorized_channel = get_secret('SLACK_BOT_AUTHORIZED_CHANNEL')
+    slack_client = SlackClient(get_secret('SLACK_BOT_TOKEN'))
 
     try:
 
@@ -101,9 +106,9 @@ if __name__ == "__main__":
             # Read bot's user ID by calling Web API method `auth.test`
             starterbot_id = slack_client.api_call("auth.test")["user_id"]
             while True:
-                command, channel = parse_bot_commands(slack_client.rtm_read())
+                command, channel = parse_bot_commands(starterbot_id, slack_client.rtm_read())
                 if command:
-                    handle_command(command, channel)
+                    handle_command(slack_client, authorized_channel_id, command, channel)
                 time.sleep(RTM_READ_DELAY)
         else:
             logging.error("Connection failed. Exception traceback printed above.")

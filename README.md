@@ -11,15 +11,15 @@ Usage
 List the recent tags from an existing service
 -----
 
-    @nysa deploy <cluster> <service>
+    @nysa deploy to <cluster> <service>
 
 This will show you the first 20th most recent images that are stored in the Docker Registry
 
 
-Update an existing service with a newer image tag
+Update an existing service(s) with a newer image tag
 -----
 
-    @nysa deploy <cluster> <service>:<tag>
+    @nysa deploy to <cluster> <service>:<tag>[,<service>:<tag>]
 
 This command will trigger a new deployment using the newer image
 
@@ -27,7 +27,7 @@ This command will trigger a new deployment using the newer image
 Installation
 ------------
 
-The project is available as a Docker image Simply run::
+The project is available as a docker image simply run::
 
     $ docker run -e PROFILE=prod -e AWS_DEFAULT_REGION=us-east-1 111633362669.dkr.ecr.us-east-1.amazonaws.com/nysa-slackbot
 
