@@ -29,7 +29,7 @@ Installation
 
 The project is available as a docker image simply run::
 
-    $ docker run -e PROFILE=prod -e AWS_DEFAULT_REGION=us-east-1 111633362669.dkr.ecr.us-east-1.amazonaws.com/nysa-slackbot
+    $ docker run -e PROFILE=prod -e AWS_DEFAULT_REGION=us-east-1 xxx.dkr.ecr.us-east-1.amazonaws.com/nysa-slackbot
 
 
 Configuration
@@ -47,8 +47,8 @@ Deploy new changes
 
 If you want to make some changes and then distribute the application you can build a docker image
 
-    $ docker build -t 111633362669.dkr.ecr.us-east-1.amazonaws.com/nysa-slackbot .
+    $ docker build -t xxx.dkr.ecr.us-east-1.amazonaws.com/nysa-slackbot .
 
 and then in the destination server you just need to pull this new image created
 
-    $ docker pull 111633362669.dkr.ecr.us-east-1.amazonaws.com/nysa-slackbot
+    $ docker pull xxx.dkr.ecr.us-east-1.amazonaws.com/nysa-slackbot
